@@ -58,8 +58,6 @@ if check_config("IGNORE_THESE_MODULES") is not None:
                        (", ").join(ignore_these))
 
 # ignore modules if they are specified in the ptf.config
-
-
 def ignore_module(module):
     result = False
     for check in ignore_these:
@@ -71,6 +69,36 @@ def ignore_module(module):
                 result = True
     if result:
         print_warning("Ignoring module: " + module)
+
+    return result
+
+include_these = []
+if check_config("INCLUDE_ONLY_THESE_MODULES") is not None:
+    include_these = check_config("INCLUDE_ONLY_THESE_MODULES").split(",")
+    if include_these[0] != "":
+        if include_these[0] != '"':
+            print_info("Including only the following modules: " +
+                       (", ").join(include_these))
+        else:
+            include_these = []
+    else:
+        include_these = []
+
+# include only particular modules if they are specified in the ptf.config
+def include_module(module):
+    if not include_these:
+        return True
+
+    result = False
+    for check in include_these:
+        if "/*" in check:
+            if check[:-1] in module:
+                result = True
+        else:
+            if (os.getcwd() + "/" + check + ".py") == module:
+                result = True
+    if result:
+        print_status("Including module: " + module)
 
     return result
 
@@ -177,8 +205,8 @@ def use_module(module, all_trigger):
             install_base_location = module_parser(filename, "INSTALL_LOCATION")
             module_split = module.split("/")
             module_split = module_split[1]
-            install_location = base_install + "/" + \
-                module_split + "/" + install_base_location + "/"
+            install_location = os.path.expanduser(base_install + "/" + \
+                module_split + "/" + install_base_location + "/")
 
         while 1:
 
@@ -204,7 +232,7 @@ def use_module(module, all_trigger):
                     print_warning(
                         "In order to show modules, you must type 'back' first")
 
-                # if we are using a module within a module we return our prompt 
+                # if we are using a module within a module we return our prompt
                 if "use " in prompt:
                     return prompt
 
@@ -252,11 +280,11 @@ def use_module(module, all_trigger):
             # tool depend is if there is a tool for example like veil that has a depend of Metasploit - can put TOOL_DEPEND = the tool or tools here
             if len(tool_depend) > 1:
                 try:
-                    if " " in tool_depend: 
+                    if " " in tool_depend:
                         tool_depend = tool_depend.split(" ")
                         for tool in tool_depend: use_module(tool, "1")
 
-                    elif "," in tool_depend: 
+                    elif "," in tool_depend:
                         tool_depend = tool_depend.split(",")
                         for tool in tool_depend: use_module(tool, "1")
 
@@ -265,7 +293,7 @@ def use_module(module, all_trigger):
 
             if int(all_trigger) == 1:
                 prompt = "run"
-            
+
             if int(all_trigger) == 2:
                 prompt = "update"
 
@@ -428,8 +456,9 @@ def use_module(module, all_trigger):
                             print_status("Installing now.. be patient...")
                             proc = subprocess.Popen("git clone %s %s" % (repository_location, install_location), stderr=subprocess.PIPE, shell=True).wait()
                             print_status("Finished Installing! Enjoy the tool located under: " + install_location)
-                        launcher(filename, install_location)
                         after_commands(filename, install_location)
+                        launcher(filename, install_location)
+
 
                     # if we are using svn
                     if install_type.lower() == "svn":
@@ -447,7 +476,7 @@ def use_module(module, all_trigger):
                         print_status(
                             "FILE was the selected method for installation... Using curl -o to install.")
                         repository_file = repository_location.split("/")[-1]
-                        proc = subprocess.Popen('curl -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.112 Safari/534.30" -o %s%s %s' % (
+                        proc = subprocess.Popen('curl -k -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.112 Safari/534.30" -o %s%s %s' % (
                             install_location, repository_file, repository_location), stderr=subprocess.PIPE, shell=True).wait()
                         print_status(
                             "Finished Installing! Enjoy the tool located under: " + install_location)
@@ -487,12 +516,12 @@ def find_containing_file(directory, location):
         print_warning("%s is not managed by PTF"%(location))
         # Didn't find anything, returning None
         return None
-        
-                    
-def handle_prompt(prompt):
+
+
+def handle_prompt(prompt, force=False):
     # specify no commands, if counter increments then a command was found
     base_counter = 0
-    
+
     # main help menu
     if prompt == "?" or prompt == "help":
         show_help_menu()
@@ -513,7 +542,7 @@ def handle_prompt(prompt):
     if prompt == "show new modules":
         base_counter = 1
         show_new_modules()
-        
+
     # inside joke
     if prompt == "install sleeves":
         print_error("Scott White? Sleeves? F Sleeves. Scott Rules.")
@@ -534,8 +563,12 @@ def handle_prompt(prompt):
         if "install_update_all" in prompt[1]:
             counter = 3
             try:
-                install_query = input(
-                    "[*] You are about to install/update everything. Proceed? [yes/no]:")
+                if not force:
+                    install_query = input(
+                        "[*] You are about to install/update everything. Proceed? [yes/no]:")
+                else:
+                    print("[*] You are about to install/update everything. Proceed? [yes/no]:yes")
+                    install_query = "yes"
             except EOFError:
                 install_query = "no"
                 print("")
@@ -559,13 +592,14 @@ def handle_prompt(prompt):
                     "We are going to first install all prereqs using apt before installing..")
                 print_status(
                     "Cycling through modules and grabbing requirements...")
-                
+
                 for path, subdirs, files in os.walk(modules_path):
                     for name in files:
                             # join the structure
                         filename = os.path.join(path, name)
                         # strip un-needed files
-                        if not "__init__.py" in filename and not ignore_module(filename) and ".py" in filename and not ".pyc" in filename:
+                        if not "__init__.py" in filename and not ignore_module(filename) and include_module(filename) and ".py" in filename and not ".pyc" in filename:
+                            print("!!!***!!!installing deps for module: " + filename)
                             # shorten it up a little bit
                             filename_short = filename.replace(
                                 os.getcwd() + "/", "")
@@ -635,7 +669,7 @@ def handle_prompt(prompt):
                     for name in files:
                         # join the structure
                         filename = os.path.join(path, name)
-                        if not "__init__.py" in filename and not ignore_module(filename) and ".py" in filename and not ".pyc" in filename and not "install_update_all" in filename and not "__init__" in filename:
+                        if not "__init__.py" in filename and not ignore_module(filename) and include_module(filename) and ".py" in filename and not ".pyc" in filename and not "install_update_all" in filename and not "__init__" in filename:
                             # strip un-needed files
                             # if not "__init__.py" in filename and not ignore_module(filename):
                             # shorten it up a little bit
@@ -679,7 +713,7 @@ def handle_prompt(prompt):
                 if not 'ptf' == dir  and not os.path.isfile(dir):
                     for subdir in os.listdir(os.path.join(base_install, dir)): # module
                         # Ignore normal files
-                        if not os.path.isfile(subdir):                             
+                        if not os.path.isfile(subdir):
                             module = "modules/%s/%s"%(dir,subdir)
                             # If the install file and install directory differ, search the correct file
                             if(not os.path.isfile(module + '.py')):
@@ -697,7 +731,7 @@ def handle_prompt(prompt):
             while 1:
                 try:
                     module = use_module(prompt[1], "0")
-                    if "use " in module: 
+                    if "use " in module:
                         prompt = module.split(" ")
                     else: break
                 except Exception: break

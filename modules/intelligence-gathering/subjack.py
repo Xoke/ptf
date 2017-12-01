@@ -1,32 +1,33 @@
 #!/usr/bin/env python
 #####################################
-# Installation module for xdotool
+# Installation module for Sublist3r
 #####################################
 
 # AUTHOR OF MODULE NAME
-AUTHOR="Jason Ashton (@jayw0k)"
+AUTHOR="Gareth Darby (gazcbm)"
 
 # DESCRIPTION OF THE MODULE
-DESCRIPTION="This module will install/update xdotool - a keyboard/mouse activity simulator"
+DESCRIPTION="This module will install/update Subjack - A Hostile Subdomain Takeover tool written in Go by Haccer"
 
 # INSTALL TYPE GIT, SVN, FILE DOWNLOAD
 # OPTIONS = GIT, SVN, FILE
 INSTALL_TYPE="GIT"
 
 # LOCATION OF THE FILE OR GIT/SVN REPOSITORY
-REPOSITORY_LOCATION="https://github.com/jordansissel/xdotool.git"
+REPOSITORY_LOCATION="https://github.com/haccer/subjack.git"
 
 # WHERE DO YOU WANT TO INSTALL IT
-INSTALL_LOCATION="xdotool"
+INSTALL_LOCATION="subjack"
 
 # DEPENDS FOR DEBIAN INSTALLS
-DEBIAN="git,make,libx11-dev,libxtst-dev"
+DEBIAN="git,golang"
 
 # DEPENDS FOR FEDORA INSTALLS
-FEDORA="make,libx11-devel,libxtst-devel"
+FEDORA="git,golang"
 
 # COMMANDS TO RUN AFTER
-AFTER_COMMANDS="cd {INSTALL_LOCATION},make -j4,make install"
+AFTER_COMMANDS="cd {INSTALL_LOCATION}, go build subjack.go"
 
 # CREATE LAUNCHER
-LAUNCHER="xdotool"
+LAUNCHER="subjack"
+

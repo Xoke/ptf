@@ -110,7 +110,7 @@ def count_modules():
     return counter
 
 # version information
-grab_version = "1.13.1"
+grab_version = "1.16"
 
 # banner
 banner = bcolors.RED + r"""
@@ -380,8 +380,8 @@ def launcher(filename, install_location):
                 # if we found filetype
                 if point != "":
                     filewrite = open("/usr/local/bin/" + launchers, "w")
-                    filewrite.write('#!/bin/sh\ncd %s\nfind %s -executable || chmod +x %s\n%s $*\n' %
-                                    (install_location, file_point, file_point, point))
+                    filewrite.write('#!/bin/sh\n[ -x %s%s ] || chmod +x %s%s\n%s%s $*\n' %
+                                    (install_location, file_point, install_location, file_point, install_location, file_point))
                     filewrite.close()
                     subprocess.Popen("chmod +x /usr/local/bin/%s" %
                                      (launchers), shell=True).wait()
